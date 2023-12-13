@@ -1,0 +1,366 @@
+12/13/2023
+
+What was the issue?:
+
+I faced a issue where i couldnt type on the compose to make it display the website/article once clicked,
+i didn't know how to make a composable clickable at all, i didn't know anything, But then i used viewmodels and
+webview to fix this and everything worked, I will provide notes and a CLEAR Step by step on how i did this.
+
+------------------------------------------------------------------------------------------------------------
+
+Step by Step explanation on how to make a composable clickable
+
+1.Do your internet permisson in the manifest file, And get all your dependincies in the build.gradle file
+(Go into my build.gradle file and you'll see all the dependincies needed)
+
+2.You want to create a package called models, And in there you should create a new class called
+NewsResponse and this is going to take the response of the article:
+
+data class NewsResponse(
+    val articles: MutableList<Article>,
+    val status: String,
+    val totalResults: Int
+)
+
+3.You want to get that list of articles and all the details it will have like the url, urlToImage etc:
+
+data class Article(
+    var id: Int? = null,
+    val author: String?,
+    val content: String?,
+    val description: String?,
+    val publishedAt: String?,
+    val source: Source?,
+    val title: String?,
+    val url: String?,
+    val urlToImage: String?,
+    var isSaved: Boolean = false
+) : Serializable
+
+4.You need to create another class called Source and in there you'll have the name and id
+(You wont really need this but you have to have it):
+
+data class Source(
+    val id: String,
+    val name: String
+)
+
+5.Create your Class ArticleViewModel this will handle when you select a article:
+
+class ArticleViewModel : ViewModel() {
+    val selectedArticle = MutableLiveData<Article>()
+}
+
+6.Create your api package, Then create the Interface class , the interface will be called NewsApiInterface
+it'll take getBreakingNews and searchNews, Which search news is implemented but we won't be using it because it doesnt work
+yet:
+
+interface NewsApiInterface {
+
+    @GET("v2/top-headlines")
+    suspend fun getBreakingNews(
+        @Query("country")
+        countryCode: String = "us",
+        @Query("page")
+        pageNumber: Int = 1,
+        @Query("apiKey")
+        apiKey: String = BuildConfig.NEWS_API_KEY
+    ): Response<NewsResponse>
+
+    /**DONT FORGET! to put the searchnews inside the interface:*/
+    @GET("v2/everything")
+    suspend fun searchForNews(
+        @Query("q")
+        searchQuery: String,
+        @Query("page")
+        pageNumber: Int = 1,
+        @Query("apiKey")
+        apiKey: String = BuildConfig.NEWS_API_KEY
+    ): Response<NewsResponse>
+}
+
+7.Create the class RetrofitInstanceClass which will hold the baseUrl and the api calls:
+
+class RetrofitInstanceClass {
+    companion object{
+
+         val retrofit by lazy {
+
+            val logging = HttpLoggingInterceptor()
+            logging.setLevel(HttpLoggingInterceptor.Level.BODY)
+            val client = OkHttpClient.Builder()
+                .addInterceptor(logging)
+                .build()
+
+            Retrofit.Builder()
+                .baseUrl("https://newsapi.org")
+                .addConverterFactory(GsonConverterFactory.create())
+                .client(client)
+                .build()
+        }
+
+        val api by lazy {
+            retrofit.create(NewsApiInterface::class.java)
+        }
+    }
+}
+
+8.Now your going to implement the bottom navigation create a package called navigation and in there you
+want to create the sealed class NavRoutes, in here you'll have 3 destinations:
+
+sealed class NavRoutes(val route: String) {
+    object BreakingNews : NavRoutes("Breaking News")
+    object SavedNews : NavRoutes("Saved News")
+    object SearchNews : NavRoutes("Search News")
+
+}
+
+9.Now you want to create an object class called NavBarItems and this will be how your bottom nav is styled:
+object NavBarItems {
+    val BarItems = listOf(
+        BarItem(
+            title = "Breaking News",
+            image = Icons.Filled.Warning,
+            route = "Breaking News"
+        ),
+        BarItem(
+            title = "Saved News",
+            image = Icons.Filled.Favorite,
+            route = "Saved News"
+        ),
+        BarItem(
+            title = "Search News",
+            image = Icons.Filled.Menu,
+            route = "Search News"
+        )
+    )
+}
+
+10.Create your class BarItem and this will be what is in the bottom nav:
+
+data class BarItem(
+    val title: String,
+    val image: ImageVector,
+    val route: String
+)
+
+11.CREATE YOUR SCREENS!, You want to have another package called screens and in here you'll have breakingNews and SearchNews
+(dont worry about savednews yet), In the BreakingNews is the MOST important this is where your breakingNews article is going
+to be and where your going to set up all your webviews and stuff:
+
+@Composable
+fun AppNavigator(viewModel: ArticleViewModel) {
+    // Creates a NavController to handle navigation
+    val navController = rememberNavController()
+
+    // NavHost manages navigation between different destinations
+    NavHost(navController, startDestination = "articleList") {
+        // Destination to show list of articles
+        composable("articleList") {
+            BreakingNews(navController, viewModel)
+        }
+
+        // Destination to show full article
+        composable("fullArticle") {
+            FullArticleScreen(viewModel)
+        }
+    }
+}
+
+// Shows full article using WebView
+@Composable
+fun FullArticleScreen(viewModel: ArticleViewModel) {
+    // Get selected article from view model
+    val article = viewModel.selectedArticle.value
+
+    // Show article content in WebView
+    AndroidView(factory = { ctx ->
+        WebView(ctx).apply {
+            layoutParams = ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+            webViewClient = WebViewClient()
+            article?.url?.let { loadUrl(it) }
+        }
+    }, update = { view ->
+        viewModel.selectedArticle.value?.url?.let { view.loadUrl(it) }
+    })
+}
+
+
+// Card to display single article
+@Composable
+fun BreakingNewsCard(
+    navController: NavController,
+    article: Article,
+    viewModel: ArticleViewModel
+
+) {
+
+    // Clicking card navigates to full article screen
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable {
+                //The clickable modifier makes the element clickable by detecting click events.
+                // here it is added to the Card composable.
+                viewModel.selectedArticle.value = article
+                /**This line updates the selectedArticle state in the ArticleViewModel viewModel to the current article being displayed. So when the card is clicked, it will save a
+                 * reference to that article object in the view model.*/
+                navController.navigate("fullArticle")
+            }
+    ) {
+
+        Column(modifier = Modifier.fillMaxSize()) {
+            CoilImage(
+                imageUrl = article.urlToImage ?: "",
+                contentDescription = article.title,
+                modifier = Modifier
+                    .size(300.dp, 300.dp)
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            article.title?.let { Text(text = it, style = MaterialTheme.typography.bodyMedium) }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            article.description?.let { Text(text = it) }
+        }
+    }
+}
+
+
+/**5. This @Composable function displays an image using the Coil library.*/
+@OptIn(ExperimentalCoilApi::class)
+@Composable
+fun CoilImage(imageUrl: String, contentDescription: String?, modifier: Modifier = Modifier) {
+    val painter = rememberImagePainter(imageUrl)
+
+    Image(
+        painter = painter,
+        contentDescription = contentDescription,
+        modifier = modifier
+    )
+}
+
+/**6. This @Composable function displays a list of news articles. It uses a LazyColumn to display a list of BreakingNewsCard*/
+@Composable
+fun BreakingNewsList(navController: NavController, articles: List<Article>, viewModel: ArticleViewModel) {
+    // LazyColumn displays list of cards
+    LazyColumn {
+        items(articles) { article ->
+            BreakingNewsCard(navController, article, viewModel)
+        }
+    }
+}
+
+
+/**7. This @Composable function fetches the breaking news articles and displays them using the BreakingNewsList composable*/
+@Composable
+fun BreakingNews(navController: NavController, viewModel: ArticleViewModel) {
+
+    val articles = remember { mutableStateOf<List<Article>>(emptyList()) }
+
+    // Fetch articles
+    LaunchedEffect(Unit) {
+        val response = RetrofitInstanceClass.api.getBreakingNews()
+        articles.value = response.body()?.articles ?: emptyList()
+    }
+
+    // Display list of articles
+    BreakingNewsList(navController, articles.value, viewModel)
+}
+
+
+12.In the MainActivity you want to set up your bottom navigation and also get the BreakingNews composable displayed:
+
+class MainActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContent {
+            MainScreen()
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MainScreen() {
+    val navController = rememberNavController()
+
+    Scaffold(
+
+        content = { padding ->
+            Column(
+                Modifier
+                    .fillMaxSize()
+                    .padding(56.dp)) {
+                NavigationHost(navController = navController)
+            } },
+        bottomBar = {
+            BottomNavigationBar(navController = navController)
+        }
+    )
+
+}
+
+@Composable
+fun NavigationHost(navController: NavHostController)
+{
+    NavHost(navController = navController, startDestination = NavRoutes.BreakingNews.route) {
+        composable(NavRoutes.BreakingNews.route) {
+            // Create an instance of your ViewModel
+            val viewModel: ArticleViewModel = ViewModelProvider(it).get(ArticleViewModel::class.java)
+            // Create a NavHostController
+            // Use your AppNavigator composable
+            AppNavigator(viewModel)
+        }
+
+        composable(NavRoutes.SavedNews.route) {
+            SavedNews()
+        }
+        composable(NavRoutes.SearchNews.route) {
+            SearchNews()
+        }
+    }
+}
+
+
+@Composable
+fun BottomNavigationBar(navController: NavHostController){
+    NavigationBar {
+        val backStackEntry by navController.currentBackStackEntryAsState()
+
+        val currentRoute =
+            backStackEntry?.destination?.route
+
+        NavBarItems.BarItems.forEach { navItem ->
+            NavigationBarItem(
+                selected = currentRoute ==
+                        navItem.route,
+                onClick = {
+                    navController.navigate(navItem.
+                    route) {
+                        popUpTo(navController.graph.
+                        findStartDestination().id) {
+                            saveState = true
+                        }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                },
+                icon = {
+                    Icon(imageVector =
+                    navItem.image,
+                        contentDescription =
+                        navItem.title)
+                },
+                label = {
+                    Text(text = navItem.title)
+                },
+            )
+        }
+    }
+}
