@@ -1,13 +1,12 @@
 package com.example.breakingnewsapp.screens
 
 
-import android.util.Log
 import android.view.ViewGroup
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,26 +16,24 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material3.Card
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.navigation.NavController
-import androidx.navigation.NavGraph
-import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import coil.annotation.ExperimentalCoilApi
-import coil.compose.ImagePainter
 import coil.compose.rememberImagePainter
-import com.example.breakingnewsapp.NavRoutes
 import com.example.breakingnewsapp.api.RetrofitInstanceClass
 
 import com.example.breakingnewsapp.models.Article
@@ -73,19 +70,37 @@ fun FullArticleScreen(viewModel: ArticleViewModel) {
     // Get selected article from view model
     val article = viewModel.selectedArticle.value
 
-    // Show article content in WebView
-    AndroidView(factory = { ctx ->
-        WebView(ctx).apply {
-            layoutParams = ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT
+    Box(modifier = Modifier.fillMaxSize()) {
+        // Show article content in WebView
+        AndroidView(factory = { ctx ->
+            WebView(ctx).apply {
+                layoutParams = ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT
+                )
+                webViewClient = WebViewClient()
+                article?.url?.let { loadUrl(it) }
+            }
+        }, update = { view ->
+            viewModel.selectedArticle.value?.url?.let { view.loadUrl(it) }
+        })
+
+        FloatingActionButton(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(bottom = 78.dp),
+          //This makes the heart clickable
+            //and saved to the database
+            onClick = {  article?.let {
+                viewModel.saveArticle(it)
+            }}
+        ) {
+            Icon(
+                imageVector = Icons.Default.Favorite,
+                contentDescription = "Save Article"
             )
-            webViewClient = WebViewClient()
-            article?.url?.let { loadUrl(it) }
         }
-    }, update = { view ->
-        viewModel.selectedArticle.value?.url?.let { view.loadUrl(it) }
-    })
+    }
 }
 
 
@@ -102,6 +117,7 @@ fun BreakingNewsCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .padding(18.dp)
             .clickable {
                 //The clickable modifier makes the element clickable by detecting click events.
                 // here it is added to the Card composable.
@@ -149,7 +165,7 @@ fun CoilImage(imageUrl: String, contentDescription: String?, modifier: Modifier 
 @Composable
 fun BreakingNewsList(navController: NavController, articles: List<Article>, viewModel: ArticleViewModel) {
     // LazyColumn displays list of cards
-    LazyColumn {
+    LazyColumn(modifier = Modifier.fillMaxSize()) {
         items(articles) { article ->
             BreakingNewsCard(navController, article, viewModel)
         }

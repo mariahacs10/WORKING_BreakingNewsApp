@@ -1,0 +1,286 @@
+12/27/2023
+
+What was the issue?:
+
+The issue was in the build.gradle, All my room database implementation
+was correct EVERYTHING in there was fine. It was because i did not add kapt
+to my project, and i also did not lower the version. So these are the step by
+steps on How i got SavedNews to work.
+
+For Room specifically, kapt is mandatory to avoid crashes due to missing generated code.!
+
+(Also follow the breakingNews, and searchNews notes to get to get the
+list of articles and stuff, I am only going to be talking about
+the savednews and how i did the room database and a little bit
+of the breakingnews and searchNews)
+-----------------------------------------------------------------------------------------------------
+
+Step by Step explanation
+
+Step 1.GO IN YOUR BUILD_GRADLE, You want to get the build.gradle out of the way FIRST
+So you need to add the kapt plugin and also LOWER your dependencies:
+
+plugins {
+    id("com.android.application")
+    id("org.jetbrains.kotlin.android")
+    id ("kotlin-kapt")
+}
+
+ compileOptions {
+        //You need to DECREASE the build.gradle size
+
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+    kotlinOptions {
+        //You need to DECREASE the build.gradle size
+        jvmTarget = "17"
+    }
+
+dependencies {
+    // Room
+    implementation ("androidx.room:room-runtime:2.6.0-rc01")
+    kapt ("androidx.room:room-compiler:2.5.2")
+}
+
+(This is not the full gradle, but these are the major things you need to add, for full gradle look at the repo)
+
+Step 2.Assuming you have the BreakingNews, SearchNews, BottomNavigation Etc, Go into your Article class and
+you want to set up the entity:
+
+@Entity(
+    tableName = "article"
+)
+data class Article(
+    // Primary key will auto generate unique IDs
+    //(if any)
+    @PrimaryKey(autoGenerate = true)
+    var id: Int? = null,
+
+    // Fields mapped to table columns
+    val author: String?,
+    val content: String?,
+    val description: String?,
+    val publishedAt: String?,
+    val title: String?,
+    val url: String?,
+    val urlToImage: String?,
+
+    // Local flag for saved state
+    var isSaved: Boolean = false
+) : Serializable
+
+Step 3.Create your dao, Right click the api package and create a new interface class called ArticleDao:
+
+@Dao
+interface ArticleDao {
+
+    // Annotation marks insert method to database
+    @Insert
+    suspend fun insert(article: Article)
+
+    // Query annotation defines SQL statement
+    @Query("SELECT * FROM article")
+
+    // Map query result to LiveData
+    fun getAllArticles(): LiveData<List<Article>>
+
+}
+
+Step 4.Create a new class called AppDatabase by right clicking the moddels and in there you want to set up
+the room database:
+@Database(entities = [Article::class], version = 2)
+abstract class AppDatabase : RoomDatabase() {
+
+    // Declare associated DAOs
+    abstract fun articleDao(): ArticleDao
+
+    companion object {
+        // Singleton pattern prevents multiple instances of the database
+        @Volatile
+        private var INSTANCE: AppDatabase? = null
+
+        fun getDatabase(context: Context): AppDatabase {
+            // Single thread-safe instance
+            return INSTANCE ?: synchronized(this) {
+                // Create database only if needed
+                val instance = Room.databaseBuilder(
+                    context.applicationContext,
+                    AppDatabase::class.java,
+                    "article_database"
+                ).build()
+
+                // Save instance for future calls
+                INSTANCE = instance
+                instance
+            }
+        }
+    }
+}
+
+Step 5.Create the ArticleRepository by right clicking on the models package ArticleRepository
+is going to Handle the data operations:
+
+class ArticleRepository(context: Context) {
+
+    //This accesses the database
+    private val db = AppDatabase.getDatabase(context)
+    // Access DAO from the database
+    private val articleDao = db.articleDao()
+
+    // Query all articles through DAO
+    fun getSavedArticles() = articleDao.getAllArticles()
+
+    // Call insert on DAO
+    suspend fun insertArticle(article: Article) = articleDao.insert(article)
+
+}
+
+Step 6.In the ArticleViewModel (you've created this class in the breakingnews and searchnews notes), you its going to
+hold observable data for UI, so like the saving aspect:
+
+class ArticleViewModel(private val repository: ArticleRepository) : ViewModel() {
+
+    // Selected article for UI state
+    val selectedArticle = MutableLiveData<Article>()
+
+    // Get saved articles from repository
+    private val _savedArticles = repository.getSavedArticles()
+
+    // Expose as read-only livedata
+    val savedArticles: LiveData<List<Article>> = _savedArticles
+
+    // Launch coroutine to call repository
+    fun saveArticle(article: Article) = viewModelScope.launch {
+        repository.insertArticle(article)
+    }
+
+}
+
+Step 7.In the MainActivity you want to create the viewmodel and the viewModel factory which is mandatory
+since you have room database now:
+
+
+class MainActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+
+        // Create an instance of ArticleRepository to access database
+        val repository = ArticleRepository(applicationContext)
+
+        // ViewModelFactory will create ArticleViewModels with the repository
+        val viewModelFactory = ArticleViewModelFactory(repository)
+
+        // Get instance of ArticleViewModel from the factory
+        // This ViewModel has access to the repository for data
+        val viewModel = ViewModelProvider(this, viewModelFactory)
+            .get(ArticleViewModel::class.java)
+
+        // Set Compose UI content
+        setContent {
+            // Pass ViewModel to top level composable
+            MainScreen(viewModel)
+        }
+    }
+}
+
+// Simple ViewModel factory provides repository to constructor
+class ArticleViewModelFactory(
+    private val repository: ArticleRepository
+) : ViewModelProvider.Factory {
+
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        return ArticleViewModel(repository) as T
+    }
+
+}
+
+
+/** Working with the Scaffold component
+The final task before testing the project is to complete the layout in the
+MainScreen function. For this, we will use the Compose Scaffold.
+
+(What is Scaffold?:  layout structure for organizing UI elements on the screen
+responsively)
+ */
+
+
+@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MainScreen(viewModel: ArticleViewModel) {
+    val navController = rememberNavController()
+
+    Scaffold(
+
+        content = {
+            Column(
+                Modifier
+                    .fillMaxSize()) {
+                NavigationHost(navController = navController, viewModel)
+
+            } },
+        bottomBar = {
+            BottomNavigationBar(navController = navController)
+        }
+    )
+
+}
+
+@Composable
+fun NavigationHost(navController: NavHostController, viewModel: ArticleViewModel)
+{
+
+    NavHost(navController = navController, startDestination = NavRoutes.BreakingNews.route) {
+        composable(NavRoutes.BreakingNews.route) {
+
+            AppNavigator(viewModel)
+        }
+
+        composable(NavRoutes.SavedNews.route) {
+            SavedNews(viewModel)
+        }
+        composable(NavRoutes.SearchNews.route) {
+            AppNavigator2(viewModel)
+        }
+    }
+}
+
+
+@Composable
+fun BottomNavigationBar(navController: NavHostController){
+    NavigationBar {
+        val backStackEntry by navController.currentBackStackEntryAsState()
+
+        val currentRoute =
+            backStackEntry?.destination?.route
+
+        NavBarItems.BarItems.forEach { navItem ->
+            NavigationBarItem(
+                selected = currentRoute ==
+                        navItem.route,
+                onClick = {
+                    navController.navigate(navItem.
+                    route) {
+                        popUpTo(navController.graph.
+                        findStartDestination().id) {
+                            saveState = true
+                        }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                },
+                icon = {
+                    Icon(imageVector =
+                    navItem.image,
+                        contentDescription =
+                        navItem.title)
+                },
+                label = {
+                    Text(text = navItem.title)
+                },
+            )
+        }
+    }
+}

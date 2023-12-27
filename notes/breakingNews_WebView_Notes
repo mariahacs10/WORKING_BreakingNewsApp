@@ -2,9 +2,10 @@
 
 What was the issue?:
 
-I faced a issue where i couldnt type on the compose to make it display the website/article once clicked,
-i didn't know how to make a composable clickable at all, i didn't know anything, But then i used viewmodels and
-webview to fix this and everything worked, I will provide notes and a CLEAR Step by step on how i did this.
+I faced a issue that when i tapped on a article it would crash/ through an error, I was not sure on how to make a composables clickable nor did
+i know how to display the articles details screen / website, In these notes i'll show how i made the composable / article clickable and display
+the articles details / website using , .clickable{}, viewmodels and webview.
+
 
 ------------------------------------------------------------------------------------------------------------
 

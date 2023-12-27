@@ -1,6 +1,7 @@
 package com.example.breakingnewsapp
 
 
+import android.annotation.SuppressLint
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -19,6 +20,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
@@ -27,8 +29,10 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.breakingnewsapp.models.Article
+import com.example.breakingnewsapp.models.ArticleRepository
 import com.example.breakingnewsapp.models.ArticleViewModel
 import com.example.breakingnewsapp.screens.AppNavigator
+import com.example.breakingnewsapp.screens.AppNavigator2
 import com.example.breakingnewsapp.screens.SavedNews
 import com.example.breakingnewsapp.screens.SearchNews
 
@@ -37,11 +41,38 @@ import com.example.breakingnewsapp.screens.SearchNews
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+
+        // Create an instance of ArticleRepository to access database
+        val repository = ArticleRepository(applicationContext)
+
+        // ViewModelFactory will create ArticleViewModels with the repository
+        val viewModelFactory = ArticleViewModelFactory(repository)
+
+        // Get instance of ArticleViewModel from the factory
+        // This ViewModel has access to the repository for data
+        val viewModel = ViewModelProvider(this, viewModelFactory)
+            .get(ArticleViewModel::class.java)
+
+        // Set Compose UI content
         setContent {
-            MainScreen()
+            // Pass ViewModel to top level composable
+            MainScreen(viewModel)
         }
     }
 }
+
+// Simple ViewModel factory provides repository to constructor
+class ArticleViewModelFactory(
+    private val repository: ArticleRepository
+) : ViewModelProvider.Factory {
+
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        return ArticleViewModel(repository) as T
+    }
+
+}
+
 
 /** Working with the Scaffold component
 The final task before testing the project is to complete the layout in the
@@ -52,19 +83,20 @@ responsively)
  */
 
 
+@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainScreen() {
+fun MainScreen(viewModel: ArticleViewModel) {
     val navController = rememberNavController()
 
     Scaffold(
 
-        content = { padding ->
+        content = {
             Column(
                 Modifier
-                    .fillMaxSize()
-                    .padding(56.dp)) {
-                NavigationHost(navController = navController)
+                    .fillMaxSize()) {
+                NavigationHost(navController = navController, viewModel)
+
             } },
         bottomBar = {
             BottomNavigationBar(navController = navController)
@@ -74,22 +106,20 @@ fun MainScreen() {
 }
 
 @Composable
-fun NavigationHost(navController: NavHostController)
+fun NavigationHost(navController: NavHostController, viewModel: ArticleViewModel)
 {
+
     NavHost(navController = navController, startDestination = NavRoutes.BreakingNews.route) {
         composable(NavRoutes.BreakingNews.route) {
-            // Create an instance of your ViewModel
-            val viewModel: ArticleViewModel = ViewModelProvider(it).get(ArticleViewModel::class.java)
-            // Create a NavHostController
-            // Use your AppNavigator composable
+
             AppNavigator(viewModel)
         }
 
         composable(NavRoutes.SavedNews.route) {
-            SavedNews()
+            SavedNews(viewModel)
         }
         composable(NavRoutes.SearchNews.route) {
-            SearchNews()
+            AppNavigator2(viewModel)
         }
     }
 }
