@@ -33,6 +33,7 @@ import com.example.breakingnewsapp.models.ArticleRepository
 import com.example.breakingnewsapp.models.ArticleViewModel
 import com.example.breakingnewsapp.screens.AppNavigator
 import com.example.breakingnewsapp.screens.AppNavigator2
+import com.example.breakingnewsapp.screens.AppNavigator3
 import com.example.breakingnewsapp.screens.SavedNews
 import com.example.breakingnewsapp.screens.SearchNews
 
@@ -116,7 +117,7 @@ fun NavigationHost(navController: NavHostController, viewModel: ArticleViewModel
         }
 
         composable(NavRoutes.SavedNews.route) {
-            SavedNews(viewModel)
+            AppNavigator3(viewModel)
         }
         composable(NavRoutes.SearchNews.route) {
             AppNavigator2(viewModel)

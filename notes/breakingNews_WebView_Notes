@@ -174,19 +174,37 @@ fun FullArticleScreen(viewModel: ArticleViewModel) {
     // Get selected article from view model
     val article = viewModel.selectedArticle.value
 
-    // Show article content in WebView
-    AndroidView(factory = { ctx ->
-        WebView(ctx).apply {
-            layoutParams = ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT
+    Box(modifier = Modifier.fillMaxSize()) {
+        // Show article content in WebView
+        AndroidView(factory = { ctx ->
+            WebView(ctx).apply {
+                layoutParams = ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT
+                )
+                webViewClient = WebViewClient()
+                article?.url?.let { loadUrl(it) }
+            }
+        }, update = { view ->
+            viewModel.selectedArticle.value?.url?.let { view.loadUrl(it) }
+        })
+
+        FloatingActionButton(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(bottom = 78.dp),
+          //This makes the heart clickable
+            //and saved to the database
+            onClick = {  article?.let {
+                viewModel.saveArticle(it)
+            }}
+        ) {
+            Icon(
+                imageVector = Icons.Default.Favorite,
+                contentDescription = "Save Article"
             )
-            webViewClient = WebViewClient()
-            article?.url?.let { loadUrl(it) }
         }
-    }, update = { view ->
-        viewModel.selectedArticle.value?.url?.let { view.loadUrl(it) }
-    })
+    }
 }
 
 
@@ -203,6 +221,7 @@ fun BreakingNewsCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .padding(18.dp)
             .clickable {
                 //The clickable modifier makes the element clickable by detecting click events.
                 // here it is added to the Card composable.
@@ -250,7 +269,7 @@ fun CoilImage(imageUrl: String, contentDescription: String?, modifier: Modifier 
 @Composable
 fun BreakingNewsList(navController: NavController, articles: List<Article>, viewModel: ArticleViewModel) {
     // LazyColumn displays list of cards
-    LazyColumn {
+    LazyColumn(modifier = Modifier.fillMaxSize()) {
         items(articles) { article ->
             BreakingNewsCard(navController, article, viewModel)
         }
@@ -273,7 +292,6 @@ fun BreakingNews(navController: NavController, viewModel: ArticleViewModel) {
     // Display list of articles
     BreakingNewsList(navController, articles.value, viewModel)
 }
-
 
 12.In the MainActivity you want to set up your bottom navigation and also get the BreakingNews composable displayed:
 
