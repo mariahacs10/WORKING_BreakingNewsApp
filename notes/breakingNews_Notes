@@ -4,12 +4,15 @@ What was the issue?:
 
 I faced a issue that when i tapped on a article it would crash/ through an error, I was not sure on how to make a composables clickable nor did
 i know how to display the articles details screen / website, In these notes i'll show how i made the composable / article clickable and display
-the articles details / website using , .clickable{}, viewmodels and webview.
+the articles details / website using , .clickable{}, viewmodels and webview. Also having a floating action button
+
+Here is the full step by step implementation
 
 
 ------------------------------------------------------------------------------------------------------------
 
-Step by Step explanation on how to make a composable clickable
+Step by Step explanation
+
 
 1.Do your internet permisson in the manifest file, And get all your dependincies in the build.gradle file
 (Go into my build.gradle file and you'll see all the dependincies needed)
@@ -25,18 +28,28 @@ data class NewsResponse(
 
 3.You want to get that list of articles and all the details it will have like the url, urlToImage etc:
 
+@Entity(
+    tableName = "article"
+)
 data class Article(
+    // Primary key will auto generate unique IDs
+    //(if any)
+    @PrimaryKey(autoGenerate = true)
     var id: Int? = null,
+
+    // Fields mapped to table columns
     val author: String?,
     val content: String?,
     val description: String?,
     val publishedAt: String?,
-    val source: Source?,
     val title: String?,
     val url: String?,
     val urlToImage: String?,
+
+    // Local flag for saved state
     var isSaved: Boolean = false
 ) : Serializable
+
 
 4.You need to create another class called Source and in there you'll have the name and id
 (You wont really need this but you have to have it):
@@ -46,16 +59,36 @@ data class Source(
     val name: String
 )
 
-5.Create your Class ArticleViewModel this will handle when you select a article:
+5.Create your Class ArticleViewModel this will handle when you select a article and also the deleting and saving aspect:
 
-class ArticleViewModel : ViewModel() {
+
+class ArticleViewModel(private val repository: ArticleRepository) : ViewModel() {
+
+    // Selected article for UI state
     val selectedArticle = MutableLiveData<Article>()
+
+    // Get saved articles from repository
+    private val _savedArticles = repository.getSavedArticles()
+
+    // Expose as read-only livedata
+    val savedArticles: LiveData<List<Article>> = _savedArticles
+
+    // Launch coroutine to call repository
+    fun saveArticle(article: Article) = viewModelScope.launch {
+        repository.insertArticle(article)
+    }
+
+    fun deleteArticle(article: Article) {
+        viewModelScope.launch {
+            repository.deleteArticle(article)
+        }
+    }
+
 }
 
 6.Create your api package, Then create the Interface class , the interface will be called NewsApiInterface
 it'll take getBreakingNews and searchNews, Which search news is implemented but we won't be using it because it doesnt work
 yet:
-
 interface NewsApiInterface {
 
     @GET("v2/top-headlines")
@@ -145,10 +178,11 @@ data class BarItem(
     val route: String
 )
 
-11.CREATE YOUR SCREENS!, You want to have another package called screens and in here you'll have breakingNews and SearchNews
-(dont worry about savednews yet), In the BreakingNews is the MOST important this is where your breakingNews article is going
+11.CREATE YOUR SCREENS!, You want to have another package called screens and in here you'll have BreakingNews , SearchNews and
+SavedNews, In the BreakingNews is the MOST important this is where your breakingNews article is going
 to be and where your going to set up all your webviews and stuff:
 
+/**1.This function navigates to the full article screen when an article is clicked. */
 @Composable
 fun AppNavigator(viewModel: ArticleViewModel) {
     // Creates a NavController to handle navigation
@@ -188,6 +222,7 @@ fun FullArticleScreen(viewModel: ArticleViewModel) {
         }, update = { view ->
             viewModel.selectedArticle.value?.url?.let { view.loadUrl(it) }
         })
+        val context = LocalContext.current
 
         FloatingActionButton(
             modifier = Modifier
@@ -197,6 +232,7 @@ fun FullArticleScreen(viewModel: ArticleViewModel) {
             //and saved to the database
             onClick = {  article?.let {
                 viewModel.saveArticle(it)
+                Toast.makeText(context, "Article Saved", Toast.LENGTH_SHORT).show()
             }}
         ) {
             Icon(
@@ -298,25 +334,62 @@ fun BreakingNews(navController: NavController, viewModel: ArticleViewModel) {
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+
+        // Create an instance of ArticleRepository to access database
+        val repository = ArticleRepository(applicationContext)
+
+        // ViewModelFactory will create ArticleViewModels with the repository
+        val viewModelFactory = ArticleViewModelFactory(repository)
+
+        // Get instance of ArticleViewModel from the factory
+        // This ViewModel has access to the repository for data
+        val viewModel = ViewModelProvider(this, viewModelFactory)
+            .get(ArticleViewModel::class.java)
+
+        // Set Compose UI content
         setContent {
-            MainScreen()
+            // Pass ViewModel to top level composable
+            MainScreen(viewModel)
         }
     }
 }
 
+// Simple ViewModel factory provides repository to constructor
+class ArticleViewModelFactory(
+    private val repository: ArticleRepository
+) : ViewModelProvider.Factory {
+
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        return ArticleViewModel(repository) as T
+    }
+
+}
+
+
+/** Working with the Scaffold component
+The final task before testing the project is to complete the layout in the
+MainScreen function. For this, we will use the Compose Scaffold.
+
+(What is Scaffold?:  layout structure for organizing UI elements on the screen
+responsively)
+ */
+
+
+@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainScreen() {
+fun MainScreen(viewModel: ArticleViewModel) {
     val navController = rememberNavController()
 
     Scaffold(
 
-        content = { padding ->
+        content = {
             Column(
                 Modifier
-                    .fillMaxSize()
-                    .padding(56.dp)) {
-                NavigationHost(navController = navController)
+                    .fillMaxSize()) {
+                NavigationHost(navController = navController, viewModel)
+
             } },
         bottomBar = {
             BottomNavigationBar(navController = navController)
@@ -326,22 +399,20 @@ fun MainScreen() {
 }
 
 @Composable
-fun NavigationHost(navController: NavHostController)
+fun NavigationHost(navController: NavHostController, viewModel: ArticleViewModel)
 {
+
     NavHost(navController = navController, startDestination = NavRoutes.BreakingNews.route) {
         composable(NavRoutes.BreakingNews.route) {
-            // Create an instance of your ViewModel
-            val viewModel: ArticleViewModel = ViewModelProvider(it).get(ArticleViewModel::class.java)
-            // Create a NavHostController
-            // Use your AppNavigator composable
+
             AppNavigator(viewModel)
         }
 
         composable(NavRoutes.SavedNews.route) {
-            SavedNews()
+            AppNavigator3(viewModel)
         }
         composable(NavRoutes.SearchNews.route) {
-            SearchNews()
+            AppNavigator2(viewModel)
         }
     }
 }

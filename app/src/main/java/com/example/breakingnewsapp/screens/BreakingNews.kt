@@ -4,6 +4,7 @@ package com.example.breakingnewsapp.screens
 import android.view.ViewGroup
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -26,6 +27,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.navigation.NavController
@@ -84,6 +86,7 @@ fun FullArticleScreen(viewModel: ArticleViewModel) {
         }, update = { view ->
             viewModel.selectedArticle.value?.url?.let { view.loadUrl(it) }
         })
+        val context = LocalContext.current
 
         FloatingActionButton(
             modifier = Modifier
@@ -93,6 +96,7 @@ fun FullArticleScreen(viewModel: ArticleViewModel) {
             //and saved to the database
             onClick = {  article?.let {
                 viewModel.saveArticle(it)
+                Toast.makeText(context, "Article Saved", Toast.LENGTH_SHORT).show()
             }}
         ) {
             Icon(

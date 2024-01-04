@@ -2,53 +2,40 @@
 
 How do i add a floating action button when the article is clicked?:
 
-Its VERY simple all you have to do is go under the webview and set up the floating action button:
-@Composable
-fun FullArticleScreen(viewModel: ArticleViewModel) {
-    // Get selected article from view model
-    val article = viewModel.selectedArticle.value
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        // Show article content in WebView
-        AndroidView(factory = { ctx ->
-            WebView(ctx).apply {
-                layoutParams = ViewGroup.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.MATCH_PARENT
-                )
-                webViewClient = WebViewClient()
-                article?.url?.let { loadUrl(it) }
-            }
-        }, update = { view ->
-            viewModel.selectedArticle.value?.url?.let { view.loadUrl(it) }
-        })
+Step 1. You want to put a box around the element that your working with, in this case its the webview:
+ Box(modifier = Modifier.fillMaxSize()) {
+         // Show article content in WebView
+         AndroidView(factory = { ctx ->
+             WebView(ctx).apply {
+                 layoutParams = ViewGroup.LayoutParams(
+                     ViewGroup.LayoutParams.MATCH_PARENT,
+                     ViewGroup.LayoutParams.MATCH_PARENT
+                 )
+                 webViewClient = WebViewClient()
+                 article?.url?.let { loadUrl(it) }
+             }
+         }, update = { view ->
+             viewModel.selectedArticle.value?.url?.let { view.loadUrl(it) }
+         })
+         val context = LocalContext.current
 
-        FloatingActionButton(
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(bottom = 78.dp),
-            onClick = {}
-        ) {
-            Icon(
-                imageVector = Icons.Default.Favorite,
-                contentDescription = "Save Article"
-            )
-        }
-    }
-}
-
-Make sure you have a box around it. Also in the main activity you should REMOVe the set in stone padding:
-
- Scaffold(
-
-        content = {
-            Column(
-                Modifier
-                    .fillMaxSize()) {
-                NavigationHost(navController = navController)
-
-            } },
-        bottomBar = {
-            BottomNavigationBar(navController = navController)
-        }
-    )
+         FloatingActionButton(
+             modifier = Modifier
+                 .align(Alignment.BottomEnd)
+                 .padding(bottom = 78.dp),
+           //This makes the heart clickable
+             //and saved to the database
+             onClick = {  article?.let {
+                 viewModel.saveArticle(it)
+                 Toast.makeText(context, "Article Saved", Toast.LENGTH_SHORT).show()
+             }}
+         ) {
+             Icon(
+                 imageVector = Icons.Default.Favorite,
+                 contentDescription = "Save Article"
+             )
+         }
+     }
+ (As you can see the FLoatingAction button is underneath the webview which is important, and the FloatingActionButton
+ HAS to be wrapped inside the box composable)

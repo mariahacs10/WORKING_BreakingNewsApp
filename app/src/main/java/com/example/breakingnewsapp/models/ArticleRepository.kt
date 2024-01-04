@@ -15,5 +15,7 @@ class ArticleRepository(context: Context) {
 
     // Call insert on DAO
     suspend fun insertArticle(article: Article) = articleDao.insert(article)
-
+    suspend fun deleteArticle(article: Article) {
+        articleDao.deleteArticle(article)
+    }
 }

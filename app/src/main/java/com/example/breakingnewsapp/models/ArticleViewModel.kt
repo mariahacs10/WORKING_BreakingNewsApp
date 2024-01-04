@@ -22,4 +22,10 @@ class ArticleViewModel(private val repository: ArticleRepository) : ViewModel() 
         repository.insertArticle(article)
     }
 
+    fun deleteArticle(article: Article) {
+        viewModelScope.launch {
+            repository.deleteArticle(article)
+        }
+    }
+
 }
