@@ -32,9 +32,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.tooling.preview.R
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import coil.annotation.ExperimentalCoilApi
+import coil.compose.ImagePainter.State.Empty.painter
 import coil.compose.rememberImagePainter
 import com.example.breakingnewsapp.api.RetrofitInstanceClass
 
@@ -156,10 +159,15 @@ fun BreakingNewsCard(
 @OptIn(ExperimentalCoilApi::class)
 @Composable
 fun CoilImage(imageUrl: String, contentDescription: String?, modifier: Modifier = Modifier) {
-    val painter = rememberImagePainter(imageUrl)
+
+    val imageModel = if(imageUrl.isEmpty()) {
+        painterResource(com.example.breakingnewsapp.R.drawable.noimagefound)
+    } else {
+        rememberImagePainter(imageUrl)
+    }
 
     Image(
-        painter = painter,
+        painter = imageModel,
         contentDescription = contentDescription,
         modifier = modifier
     )

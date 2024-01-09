@@ -1,0 +1,37 @@
+1/8/2024
+
+I wanted to know how do i get a image placeholder to display when there isn't a image for the article, its honestly
+very simple. Here are the Steps on how to do that
+
+Step 1. in the BreakingNews Repository Go into the CoilImage and in there do this:
+
+@OptIn(ExperimentalCoilApi::class)
+@Composable
+fun CoilImage(imageUrl: String, contentDescription: String?, modifier: Modifier = Modifier) {
+
+    val imageModel = if(imageUrl.isEmpty()) {
+        painterResource(com.example.breakingnewsapp.R.drawable.noimagefound)
+    } else {
+        rememberImagePainter(imageUrl)
+    }
+
+    Image(
+        painter = imageModel,
+        contentDescription = contentDescription,
+        modifier = modifier
+    )
+}
+
+Step 2. Dont forget to add your dependincie:
+
+    implementation("io.coil-kt:coil-compose:1.3.0")
+
+
+Step 3.And Also in the Manifest you want to add this:
+
+        android:usesCleartextTraffic="true"
+
+-------------------------------------------------------------------
+
+(you will NOT have to change anything in the savednews or search news because your using the coilimage in the breaking news, and since
+searchnews and savednews are based on the breakingnews coilimage you wont have to change any code inside those composables)

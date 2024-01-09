@@ -100,7 +100,7 @@ dependencies {
     //Ok Http Dependencies
     implementation ("com.squareup.okhttp3:logging-interceptor:4.9.3")
 
-    implementation("io.coil-kt:coil-compose:1.3.2")
+    implementation("io.coil-kt:coil-compose:1.3.0")
 
     // ViewModel
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.2")
@@ -119,4 +119,5 @@ dependencies {
 
     implementation ("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.5.2")
     implementation ("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.5.2")
+
 }
