@@ -160,12 +160,18 @@ fun BreakingNewsCard(
 @Composable
 fun CoilImage(imageUrl: String, contentDescription: String?, modifier: Modifier = Modifier) {
 
+    //This checks the imageUrl if its empty if its empty
     val imageModel = if(imageUrl.isEmpty()) {
+        //You need to add the placeholder, and this will show if theres a article with no image
         painterResource(com.example.breakingnewsapp.R.drawable.noimagefound)
-    } else {
+    }
+    //else if the image has a image and it works just load the
+    // image from URL with Coil
+    else {
         rememberImagePainter(imageUrl)
     }
 
+    //This is how the image geets displayed
     Image(
         painter = imageModel,
         contentDescription = contentDescription,
