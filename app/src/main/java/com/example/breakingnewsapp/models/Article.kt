@@ -14,7 +14,6 @@ data class Article(
     //(if any)
     @PrimaryKey(autoGenerate = true)
     var id: Int? = null,
-
     // Fields mapped to table columns
     val author: String?,
     val content: String?,

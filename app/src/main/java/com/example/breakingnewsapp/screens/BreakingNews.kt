@@ -191,7 +191,7 @@ fun BreakingNewsList(navController: NavController, articles: List<Article>, view
 }
 
 
-/**7. This @Composable function fetches the breaking news articles and displays them using the BreakingNewsList composable*/
+/**7. This @Composable function fetches the breaking n/ews articles and displays them using the BreakingNewsList composable*/
 @Composable
 fun BreakingNews(navController: NavController, viewModel: ArticleViewModel) {
 

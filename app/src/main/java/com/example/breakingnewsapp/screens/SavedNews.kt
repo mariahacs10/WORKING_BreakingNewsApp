@@ -95,7 +95,6 @@ fun SavedNewsCard(
     navController: NavController,
     article: Article,
     viewModel: ArticleViewModel
-
 ) {
 
     // Clicking card navigates to full article screen
