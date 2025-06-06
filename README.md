@@ -9,3 +9,4 @@ i cover everything i did in the notes.
 
 I am pretty proud of myself for completing this!.
 
+little side note add the api key inside the local.properties file:NEWS_API_KEY=b224ce1a795743bca3deb3d5f8dc30b2
